@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-dj_pq1+y%%zwodmodo)^8xx#1+u=j1j&g%77g1$4kubs4^1n-l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['locate.bot-be-top.uz', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['locate.bot-be-top.uz', 'localhost', '127.0.0.1', '166.1.227.166']
 
 CSRF_TRUSTED_ORIGINS = ['https://locate.bot-be-top.uz']
 
