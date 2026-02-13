@@ -27,6 +27,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://locate.bot-be-top.uz",
+    "http://locate.bot-be-top.uz",
+]
+
 
 # Application definition
 
@@ -75,9 +80,13 @@ ASGI_APPLICATION = 'logistics.asgi.application'
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
     },
 }
+
 
 
 # Database
