@@ -86,9 +86,9 @@ def driver_history(request, pk):
     end_date = request.GET.get('end_date')
     
     if start_date:
-        history = history.filter(timestamp__date__gte=start_date)
+        history = history.filter(timestamp__gte=start_date.replace('T', ' '))
     if end_date:
-        history = history.filter(timestamp__date__lte=end_date)
+        history = history.filter(timestamp__lte=end_date.replace('T', ' '))
         
     return render(request, 'main/driver_history.html', {
         'driver': driver,

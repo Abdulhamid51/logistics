@@ -78,12 +78,12 @@
                 <h3 style="margin: 0; color: #1e293b;">Filter & Timeline</h3>
                 <form class="filter-form" method="GET">
                     <div>
-                        <label>Start Date</label>
-                        <input type="date" name="start_date" class="filter-input" value="{{ start_date|default:'' }}">
+                        <label>Start Date & Time</label>
+                        <input type="datetime-local" name="start_date" class="filter-input" value="{{ start_date|default:'' }}">
                     </div>
                     <div>
-                        <label>End Date</label>
-                        <input type="date" name="end_date" class="filter-input" value="{{ end_date|default:'' }}">
+                        <label>End Date & Time</label>
+                        <input type="datetime-local" name="end_date" class="filter-input" value="{{ end_date|default:'' }}">
                     </div>
                     <button type="submit" class="filter-submit">Apply Filter</button>
                     {% if start_date or end_date %}
