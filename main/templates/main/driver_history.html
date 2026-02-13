@@ -21,8 +21,20 @@
         
         #sidebar { 
             width: 320px; background: white; border-right: 1px solid #e2e8f0; 
-            padding: 20px; overflow-y: auto; z-index: 1000;
+            display: flex; flex-direction: column; z-index: 1000;
         }
+        .sidebar-header {
+            padding: 20px; border-bottom: 1px solid #f1f5f9;
+        }
+        .history-list-container {
+            flex: 1; overflow-y: auto; padding: 20px;
+        }
+        /* Custom Scrollbar for Premium Look */
+        .history-list-container::-webkit-scrollbar { width: 6px; }
+        .history-list-container::-webkit-scrollbar-track { background: transparent; }
+        .history-list-container::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .history-list-container::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
         .history-list { list-style: none; padding: 0; margin: 0; }
         .history-item { 
             padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f1f5f9;
@@ -49,17 +61,22 @@
     
     <main>
         <div id="sidebar">
-            <h3 style="margin-top: 0; margin-bottom: 16px; color: #1e293b;">Timeline</h3>
-            <ul class="history-list">
-                {% for h in history %}
-                <li class="history-item" onclick="focusPoint({{ h.latitude }}, {{ h.longitude }})">
-                    <div class="history-time">{{ h.timestamp|date:"M d, Y H:i:s" }}</div>
-                    <div class="history-coords">{{ h.latitude|floatformat:6 }}, {{ h.longitude|floatformat:6 }}</div>
-                </li>
-                {% empty %}
-                <p style="color: #64748b; font-size: 0.9rem;">No history available yet.</p>
-                {% endfor %}
-            </ul>
+            <div class="sidebar-header">
+                <h3 style="margin: 0; color: #1e293b;">Timeline</h3>
+                <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b;">Total locations: {{ history.count }}</p>
+            </div>
+            <div class="history-list-container">
+                <ul class="history-list">
+                    {% for h in history %}
+                    <li class="history-item" onclick="focusPoint({{ h.latitude }}, {{ h.longitude }})">
+                        <div class="history-time">{{ h.timestamp|date:"M d, Y H:i:s" }}</div>
+                        <div class="history-coords">{{ h.latitude|floatformat:6 }}, {{ h.longitude|floatformat:6 }}</div>
+                    </li>
+                    {% empty %}
+                    <p style="color: #64748b; font-size: 0.9rem;">No history available yet.</p>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
         <div id="map"></div>
     </main>
