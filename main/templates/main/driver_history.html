@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driver History - {{ driver.name }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: #f8fafc; height: 100vh; display: flex; flex-direction: column; }
+        header { 
+            background: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 1000;
+        }
+        h1 { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 0; }
+        .back-btn { 
+            text-decoration: none; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; transition: color 0.2s;
+        }
+        .back-btn:hover { color: #1e293b; }
+        
+        main { flex: 1; position: relative; display: flex; }
+        #map { flex: 1; z-index: 1; }
+        
+        #sidebar { 
+            width: 320px; background: white; border-right: 1px solid #e2e8f0; 
+            padding: 20px; overflow-y: auto; z-index: 1000;
+        }
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-item { 
+            padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f1f5f9;
+            background: #f8fafc; transition: all 0.2s; cursor: pointer;
+        }
+        .history-item:hover { border-color: #3b82f6; background: #eff6ff; }
+        .history-time { font-size: 0.8rem; font-weight: 600; color: #3b82f6; }
+        .history-coords { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        
+        .premium-tag {
+            font-size: 0.7rem; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 999px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.025em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <a href="{% url 'main:admin_dashboard' %}" class="back-btn">← Dashboard</a>
+            <h1>{{ driver.name }}'s Route History</h1>
+            <span class="premium-tag">Driver Live History</span>
+        </div>
+    </header>
+    
+    <main>
+        <div id="sidebar">
+            <h3 style="margin-top: 0; margin-bottom: 16px; color: #1e293b;">Timeline</h3>
+            <ul class="history-list">
+                {% for h in history %}
+                <li class="history-item" onclick="focusPoint({{ h.latitude }}, {{ h.longitude }})">
+                    <div class="history-time">{{ h.timestamp|date:"M d, Y H:i:s" }}</div>
+                    <div class="history-coords">{{ h.latitude|floatformat:6 }}, {{ h.longitude|floatformat:6 }}</div>
+                </li>
+                {% empty %}
+                <p style="color: #64748b; font-size: 0.9rem;">No history available yet.</p>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="map"></div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const historyData = {{ history_json|safe }};
+        const map = L.map('map').setView([41.2995, 69.2401], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+        if (historyData.length > 0) {
+            const path = historyData.map(h => [h.lat, h.lng]);
+            
+            // Draw Polyline
+            const polyline = L.polyline(path, {
+                color: '#3b82f6',
+                weight: 5,
+                opacity: 0.7,
+                smoothFactor: 1
+            }).addTo(map);
+
+            // Zoom map to fit polyline
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+            // Add markers for Start and End
+            if (historyData.length >= 1) {
+                const start = historyData[0];
+                const end = historyData[historyData.length - 1];
+                
+                L.circleMarker([start.lat, start.lng], { color: '#22c55e', radius: 8, fillOpacity: 1 }).addTo(map).bindPopup('Start Point: ' + start.time);
+                L.circleMarker([end.lat, end.lng], { color: '#ef4444', radius: 8, fillOpacity: 1 }).addTo(map).bindPopup('Latest Point: ' + end.time);
+            }
+        }
+
+        function focusPoint(lat, lng) {
+            map.setView([lat, lng], 18);
+            L.popup()
+                .setLatLng([lat, lng])
+                .setContent(`Point: ${lat}, ${lng}`)
+                .openOn(map);
+        }
+    </script>
+</body>
+</html>

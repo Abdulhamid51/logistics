@@ -27,3 +27,15 @@ class Cargo(models.Model):
 
     def __str__(self):
         return self.name
+
+class DriverLocationHistory(models.Model):
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='location_history')
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.driver.name} at {self.timestamp}"

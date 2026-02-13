@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from .models import Driver, Cargo
+from .models import Driver, Cargo, DriverLocationHistory
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout, authenticate
@@ -76,6 +76,19 @@ def delete_cargo(request, pk):
         cargo = get_object_or_404(Cargo, pk=pk, driver__owner=request.user)
         cargo.delete()
         return JsonResponse({'status': 'success'})
+
+@login_required(login_url='main:login')
+def driver_history(request, pk):
+    driver = get_object_or_404(Driver, pk=pk, owner=request.user)
+    history = DriverLocationHistory.objects.filter(driver=driver).order_by('timestamp')
+    return render(request, 'main/driver_history.html', {
+        'driver': driver,
+        'history': history,
+        'history_json': json.dumps([
+            {'lat': h.latitude, 'lng': h.longitude, 'time': h.timestamp.strftime('%Y-%m-%d %H:%M:%S')}
+            for h in history
+        ])
+    })
 
 def driver_page(request, token):
     driver = get_object_or_404(Driver, token=token)

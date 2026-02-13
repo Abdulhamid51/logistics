@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Driver
+from .models import Driver, DriverLocationHistory
 
 class LocationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -100,3 +100,4 @@ class LocationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def update_driver_location(self, lat, lon):
         Driver.objects.filter(id=self.driver.id).update(latitude=lat, longitude=lon, is_online=True)
+        DriverLocationHistory.objects.create(driver_id=self.driver.id, latitude=lat, longitude=lon)

@@ -123,9 +123,12 @@
             </div>
         </div>
 
+        <div class="actions" style="margin-bottom: 8px;">
+            <button class="btn btn-primary" id="history-btn" onclick="showHistory()" style="background: #0ea5e9;">Show History</button>
+        </div>
         <div class="actions">
             <button class="btn btn-danger" onclick="deleteDriver()" style="flex: 1;">Delete Driver</button>
-            <button class="btn btn-primary" onclick="closeSidebar()" style="flex: 1;">Close</button>
+            <button class="btn btn-primary" onclick="closeSidebar()" style="flex: 1; background: #64748b;">Close</button>
         </div>
     </div>
 
@@ -346,6 +349,12 @@
 
         function closeSidebar() { 
             document.getElementById('details-panel').style.display = 'none';
+        }
+
+        function showHistory() {
+            if (currentDriver) {
+                window.open(`/driver-history/${currentDriver.id}/`, '_blank');
+            }
         }
 
         function filterDrivers() {

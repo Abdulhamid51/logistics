@@ -12,5 +12,6 @@ urlpatterns = [
     path('delete-driver/<int:pk>/', views.delete_driver, name='delete_driver'),
     path('add-cargo/<int:driver_id>/', views.add_cargo, name='add_cargo'),
     path('delete-cargo/<int:pk>/', views.delete_cargo, name='delete_cargo'),
+    path('driver-history/<int:pk>/', views.driver_history, name='driver_history'),
     path('driver/<str:token>/', views.driver_page, name='driver_page'),
 ]
