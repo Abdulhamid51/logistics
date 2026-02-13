@@ -183,7 +183,8 @@
         let currentDriver = null;
         let currentLink = "";
 
-        const socket = new WebSocket('ws://' + window.location.host + '/ws/location/admin/');
+        const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+        const socket = new WebSocket(protocol + window.location.host + '/ws/location/admin/');
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);

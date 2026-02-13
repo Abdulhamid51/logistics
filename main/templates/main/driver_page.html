@@ -7,81 +7,91 @@
         .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
         .status { margin-top: 1rem; font-weight: bold; }
         .success { color: #10b981; }
-        .error { color: #ef4444; }
-        .reload-btn { 
-            display: none; margin-top: 1.5rem; padding: 10px 20px; 
-            background: #2563eb; color: white; border: none; border-radius: 8px; 
-            cursor: pointer; font-weight: 600; 
-        }
         .reload-btn:hover { background: #1d4ed8; }
+        .start-btn { 
+            margin-top: 1.5rem; padding: 15px 30px; 
+            background: #10b981; color: white; border: none; border-radius: 8px; 
+            cursor: pointer; font-weight: 700; font-size: 1.1rem;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Driver: {{ driver.name }}</h1>
-        <p>Token: <code>{{ driver.token }}</code></p>
-        <div id="status" class="status">Connecting...</div>
-        <div id="stats" style="margin-top: 10px;">
+        <p>Status: <span id="status" class="status">Waiting to start...</span></p>
+        
+        <button id="start-btn" class="start-btn" onclick="startTracking()">Start Tracking</button>
+        
+        <div id="stats" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; display: none;">
             <p>Sent updates: <span id="count">0</span></p>
-            <p>Last Lat: <span id="last-lat">-</span></p>
-            <p>Last Lon: <span id="last-lon">-</span></p>
+            <p style="font-size: 0.9rem; color: #64748b;">Last: <span id="last-lat">-</span>, <span id="last-lon">-</span></p>
         </div>
         <button id="reload-btn" class="reload-btn" onclick="window.location.reload()">Reload Page</button>
     </div>
 
     <script>
         const token = "{{ driver.token }}";
-        const socket = new WebSocket('ws://' + window.location.host + '/ws/location/' + token + '/');
+        let socket = null;
         let updateCount = 0;
+        let trackingInterval = null;
 
-        socket.onopen = function() {
-            document.getElementById('status').textContent = 'Connected & Sending Location';
-            document.getElementById('status').className = 'status success';
-            document.getElementById('reload-btn').style.display = 'none';
-            
-            // Send initial location
-            sendLocation();
-            
-            // Send every 1 minute
-            setInterval(sendLocation, 60000);
-        };
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
 
-        socket.onclose = function() {
-            document.getElementById('status').textContent = 'Disconnected';
-            document.getElementById('status').className = 'status error';
-            document.getElementById('reload-btn').style.display = 'inline-block';
-        };
+            // User gesture achieved - now request permission
+            navigator.geolocation.getCurrentPosition(() => {
+                // Success - permission granted
+                initWebSocket();
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stats').style.display = 'block';
+            }, (err) => {
+                console.error("Permission error:", err);
+                alert("Please enable location access to use this app. Error: " + err.message);
+            }, { enableHighAccuracy: true });
+        }
+
+        function initWebSocket() {
+            const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+            socket = new WebSocket(protocol + window.location.host + '/ws/location/' + token + '/');
+
+            socket.onopen = function() {
+                document.getElementById('status').textContent = 'Tracking Active';
+                document.getElementById('status').className = 'status success';
+                document.getElementById('reload-btn').style.display = 'none';
+                
+                sendLocation();
+                if (trackingInterval) clearInterval(trackingInterval);
+                trackingInterval = setInterval(sendLocation, 30000); // 30 seconds
+            };
+
+            socket.onclose = function() {
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('reload-btn').style.display = 'inline-block';
+                if (trackingInterval) clearInterval(trackingInterval);
+            };
+        }
 
         function sendLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    const data = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    };
+            navigator.geolocation.getCurrentPosition((position) => {
+                const data = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+                if (socket && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(data));
-                    
                     updateCount++;
                     document.getElementById('count').textContent = updateCount;
                     document.getElementById('last-lat').textContent = data.latitude.toFixed(6);
                     document.getElementById('last-lon').textContent = data.longitude.toFixed(6);
-                    console.log('Location sent:', data);
-                }, (error) => {
-                    console.error('Geolocation error:', error);
-                    // For demo purposes, if geolocation fails (e.g. localhost without SSL), send fake coordinates
-                    const fakeData = {
-                        latitude: 41.2995 + (Math.random() - 0.5) * 0.01,
-                        longitude: 69.2401 + (Math.random() - 0.5) * 0.01
-                    };
-                    socket.send(JSON.stringify(fakeData));
-                    updateCount++;
-                    document.getElementById('count').textContent = updateCount;
-                    document.getElementById('last-lat').textContent = fakeData.latitude.toFixed(6);
-                    document.getElementById('last-lon').textContent = fakeData.longitude.toFixed(6);
-                });
-            } else {
-                alert("Geolocation is not supported by this browser.");
-            }
+                }
+            }, (error) => {
+                console.error('Update error:', error);
+            }, { enableHighAccuracy: true, timeout: 10000 });
         }
     </script>
 </body>
