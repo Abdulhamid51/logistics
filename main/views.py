@@ -81,9 +81,20 @@ def delete_cargo(request, pk):
 def driver_history(request, pk):
     driver = get_object_or_404(Driver, pk=pk, owner=request.user)
     history = DriverLocationHistory.objects.filter(driver=driver).order_by('timestamp')
+    
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    if start_date:
+        history = history.filter(timestamp__date__gte=start_date)
+    if end_date:
+        history = history.filter(timestamp__date__lte=end_date)
+        
     return render(request, 'main/driver_history.html', {
         'driver': driver,
         'history': history,
+        'start_date': start_date,
+        'end_date': end_date,
         'history_json': json.dumps([
             {'lat': h.latitude, 'lng': h.longitude, 'time': h.timestamp.strftime('%Y-%m-%d %H:%M:%S')}
             for h in history
