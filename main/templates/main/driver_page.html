@@ -8,6 +8,12 @@
         .status { margin-top: 1rem; font-weight: bold; }
         .success { color: #10b981; }
         .error { color: #ef4444; }
+        .reload-btn { 
+            display: none; margin-top: 1.5rem; padding: 10px 20px; 
+            background: #2563eb; color: white; border: none; border-radius: 8px; 
+            cursor: pointer; font-weight: 600; 
+        }
+        .reload-btn:hover { background: #1d4ed8; }
     </style>
 </head>
 <body>
@@ -20,6 +26,7 @@
             <p>Last Lat: <span id="last-lat">-</span></p>
             <p>Last Lon: <span id="last-lon">-</span></p>
         </div>
+        <button id="reload-btn" class="reload-btn" onclick="window.location.reload()">Reload Page</button>
     </div>
 
     <script>
@@ -30,6 +37,7 @@
         socket.onopen = function() {
             document.getElementById('status').textContent = 'Connected & Sending Location';
             document.getElementById('status').className = 'status success';
+            document.getElementById('reload-btn').style.display = 'none';
             
             // Send initial location
             sendLocation();
@@ -41,6 +49,7 @@
         socket.onclose = function() {
             document.getElementById('status').textContent = 'Disconnected';
             document.getElementById('status').className = 'status error';
+            document.getElementById('reload-btn').style.display = 'inline-block';
         };
 
         function sendLocation() {

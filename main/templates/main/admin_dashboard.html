@@ -4,75 +4,372 @@
     <title>Admin Dashboard - Logistics Tracking</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100%; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: #f8fafc; overflow: hidden; }
+        
+        /* Left Sidebar: Details (Floating) */
+        #details-panel { 
+            position: absolute; top: 20px; left: 20px;
+            width: 350px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
+            padding: 24px; display: flex; flex-direction: column; z-index: 1001;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.5);
+            max-height: 85vh; overflow-y: auto;
+            display: none; /* Initially hidden */
+        }
+
+        /* Center: Map */
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        /* Right Sidebar: Driver List */
         .info-panel {
             position: absolute; top: 20px; right: 20px;
-            background: white; padding: 15px; border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 1000;
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
+            padding: 20px; border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); z-index: 1000; 
+            width: 320px; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.5);
         }
+
+        h2, h3 { color: #1e293b; margin-top: 0; }
+        .section-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+        .add-driver-form { display: flex; gap: 8px; margin-bottom: 24px; }
+        .add-driver-form input { 
+            flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; transition: border 0.2s;
+        }
+        .add-driver-form button { 
+            padding: 10px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
+        }
+
+        #driver-list { list-style: none; padding: 0; margin: 0; }
+        .driver-item { 
+            padding: 16px; border-radius: 12px; border: 1px solid transparent; 
+            cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+            display: flex; flex-direction: column; background: #fff;
+        }
+        .driver-item:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+        .driver-item.active { background: #eff6ff; border-color: #3b82f6; }
+        .driver-name { font-weight: 600; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .online-dot { 
+            width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; /* Default offline */
+            transition: background 0.3s;
+        }
+        .online-dot.online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        
+        .driver-status-tag { 
+            font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; width: fit-content; margin-bottom: 4px;
+            text-transform: uppercase; font-weight: 700;
+        }
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-inactive { background: #f1f5f9; color: #475569; }
+        .status-on_delivery { background: #fef9c3; color: #854d0e; }
+
+        /* Details Content */
+        .detail-card { margin-bottom: 24px; }
+        .input-group { margin-bottom: 16px; }
+        .input-group input, .input-group select { 
+            width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 6px; box-sizing: border-box;
+        }
+        
+        .cargo-list { list-style: none; padding: 0; margin-top: 12px; }
+        .cargo-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 6px;
+        }
+        .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-primary { background: #2563eb; color: white; width: 100%; }
+        
+        .copy-box { 
+            background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px dashed #cbd5e1; cursor: pointer; 
+            font-size: 0.8rem; color: #475569; word-break: break-all; margin-bottom: 20px; position: relative;
+        }
+        .copy-box:active { background: #e2e8f0; }
+        .copy-tip { position: absolute; right: 10px; top: 10px; font-size: 0.7rem; color: #3b82f6; font-weight: 600; }
+
+        .actions { margin-top: auto; display: flex; gap: 8px; }
     </style>
 </head>
 <body>
+    <div id="details-panel">
+        <h2 id="view-driver-name">Driver Details</h2>
+        
+        <div class="copy-box" onclick="copyDriverLink()">
+            <span id="view-driver-link">Select a driver</span>
+        </div>
+
+        <div class="detail-card">
+            <span class="section-label">Main Info</span>
+            <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="edit-name" onchange="updateDriverInfo()">
+            </div>
+            <div class="input-group">
+                <label>Status</label>
+                <select id="edit-status" onchange="updateDriverInfo()">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="on_delivery">On Delivery</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="detail-card">
+            <span class="section-label">Cargo (Goods)</span>
+            <div id="cargo-container" class="cargo-list"></div>
+            <div class="add-driver-form" style="margin-top: 12px;">
+                <input type="text" id="new-cargo-name" placeholder="New cargo name...">
+                <button onclick="addCargo()">Add</button>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-danger" onclick="deleteDriver()" style="flex: 1;">Delete Driver</button>
+            <button class="btn btn-primary" onclick="closeSidebar()" style="flex: 1;">Close</button>
+        </div>
+    </div>
+
     <div id="map"></div>
+
     <div class="info-panel">
-        <h3>Live Drivers Tracking</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0;">Live Drivers</h3>
+            <a href="{% url 'main:logout' %}" style="font-size: 0.8rem; color: #ef4444; font-weight: 600; text-decoration: none;">Logout</a>
+        </div>
+        <div class="add-driver-form">
+            <input type="text" id="new-driver-name" placeholder="Driver name...">
+            <button onclick="addNewDriver()">+</button>
+        </div>
+        
+        <div class="input-group" style="margin-bottom: 20px;">
+            <input type="text" id="driver-search" placeholder="Search drivers..." onkeyup="filterDrivers()" style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%; box-sizing: border-box;">
+        </div>
+
         <ul id="driver-list">
             {% for driver in drivers %}
-            <li id="driver-status-{{ driver.id }}">
-                {{ driver.name }} - <span class="lat">{{ driver.latitude|default:'N/A' }}</span>, <span class="lon">{{ driver.longitude|default:'N/A' }}</span>
+            <li class="driver-item" id="driver-status-{{ driver.id }}" onclick="selectDriver({{ driver.id }}, '{{ request.scheme }}://{{ request.get_host }}/driver/{{ driver.token }}/')">
+                <span class="driver-status-tag status-{{ driver.status }}">{{ driver.get_status_display }}</span>
+                <span class="driver-name">
+                    <div class="online-dot {% if driver.is_online %}online{% endif %}" id="online-dot-{{ driver.id }}"></div>
+                    {{ driver.name }}
+                </span>
+                <span style="font-size: 0.75rem; color: #64748b;">
+                    <span class="lat">{{ driver.latitude|floatformat:6|default:'--' }}</span>, 
+                    <span class="lon">{{ driver.longitude|floatformat:6|default:'--' }}</span>
+                </span>
             </li>
+            <script id="driver-data-{{ driver.id }}" type="application/json">
+                {
+                    "id": {{ driver.id }},
+                    "name": "{{ driver.name|escapejs }}",
+                    "status": "{{ driver.status }}",
+                    "cargos": [
+                        {% for cargo in driver.cargos.all %}
+                        {"id": {{ cargo.id }}, "name": "{{ cargo.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                }
+            </script>
             {% endfor %}
         </ul>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([41.2995, 69.2401], 12); // Tashkent Default
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        const map = L.map('map').setView([41.2995, 69.2401], 12); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
         const markers = {};
+        let currentDriver = null;
+        let currentLink = "";
 
-        // Initial markers
-        {% for driver in drivers %}
-            {% if driver.latitude and driver.longitude %}
-                markers[{{ driver.id }}] = L.marker([{{ driver.latitude }}, {{ driver.longitude }}])
-                    .addTo(map)
-                    .bindPopup("{{ driver.name }}");
-            {% endif %}
-        {% endfor %}
-
-        // WebSocket connection for updates
         const socket = new WebSocket('ws://' + window.location.host + '/ws/location/admin/');
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             if (data.type === 'location_update') {
                 const { driver_id, driver_name, latitude, longitude } = data;
+                updateMarker(driver_id, driver_name, latitude, longitude);
                 
-                // Update or create marker
-                if (markers[driver_id]) {
-                    markers[driver_id].setLatLng([latitude, longitude]);
-                } else {
-                    markers[driver_id] = L.marker([latitude, longitude])
-                        .addTo(map)
-                        .bindPopup(driver_name);
+                // Update coordinates in the list
+                const item = document.getElementById(`driver-status-${driver_id}`);
+                if (item) {
+                    item.querySelector('.lat').textContent = latitude.toFixed(6);
+                    item.querySelector('.lon').textContent = longitude.toFixed(6);
                 }
 
-                // Update info panel
-                const statusEl = document.getElementById(`driver-status-${driver_id}`);
-                if (statusEl) {
-                    statusEl.querySelector('.lat').textContent = latitude.toFixed(4);
-                    statusEl.querySelector('.lon').textContent = longitude.toFixed(4);
+                if(currentDriver && currentDriver.id === driver_id) {
+                    map.panTo([latitude, longitude]);
+                }
+            } else if (data.type === 'connection_status') {
+                const dot = document.getElementById(`online-dot-${data.driver_id}`);
+                if (dot) {
+                    if (data.is_online) {
+                        dot.classList.add('online');
+                    } else {
+                        dot.classList.remove('online');
+                    }
                 }
             }
         };
 
-        socket.onclose = function(e) {
-            console.error('WebSocket closed unexpectedly');
-        };
+        function updateMarker(id, name, lat, lon) {
+            if (markers[id]) {
+                markers[id].setLatLng([lat, lon]);
+            } else {
+                markers[id] = L.marker([lat, lon]).addTo(map).bindPopup(name);
+            }
+        }
+
+        function selectDriver(driverDataId, link) {
+            const dataEl = document.getElementById('driver-data-' + driverDataId);
+            const driver = JSON.parse(dataEl.textContent);
+            
+            currentDriver = driver;
+            currentLink = link;
+
+            document.querySelectorAll('.driver-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`driver-status-${driver.id}`).classList.add('active');
+
+            // Open Sidebar
+            document.getElementById('details-panel').style.display = 'flex';
+            
+            document.getElementById('view-driver-name').textContent = driver.name;
+            document.getElementById('view-driver-link').textContent = link;
+            document.getElementById('edit-name').value = driver.name;
+            document.getElementById('edit-status').value = driver.status;
+
+            renderCargos();
+            
+            // Get coordinates from the list item
+            const item = document.getElementById(`driver-status-${driver.id}`);
+            const lat = parseFloat(item.querySelector('.lat').textContent);
+            const lon = parseFloat(item.querySelector('.lon').textContent);
+
+            if (!isNaN(lat) && !isNaN(lon)) {
+                updateMarker(driver.id, driver.name, lat, lon);
+                map.setView([lat, lon], 16); 
+                markers[driver.id].openPopup();
+            }
+        }
+
+        function renderCargos() {
+            const container = document.getElementById('cargo-container');
+            container.innerHTML = '';
+            currentDriver.cargos.forEach(cargo => {
+                const div = document.createElement('div');
+                div.className = 'cargo-item';
+                div.innerHTML = `
+                    <span>${cargo.name}</span>
+                    <button class="btn btn-danger" style="padding: 4px 8px;" onclick="deleteCargo(${cargo.id})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function updateDriverInfo() {
+            const name = document.getElementById('edit-name').value;
+            const status = document.getElementById('edit-status').value;
+            
+            const response = await fetch(`/update-driver/${currentDriver.id}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, status })
+            });
+
+            if (response.ok) {
+                // Update local data
+                currentDriver.name = name;
+                currentDriver.status = status;
+                
+                // Update script tag data so it persists if re-selected
+                document.getElementById('driver-data-' + currentDriver.id).textContent = JSON.stringify(currentDriver);
+                
+                // Update UI in the list
+                const item = document.getElementById(`driver-status-${currentDriver.id}`);
+                item.querySelector('.driver-name').childNodes[2].textContent = ` ${name}`; // index 2 because [dot, space, name]
+                
+                const statusTag = item.querySelector('.driver-status-tag');
+                statusTag.className = `driver-status-tag status-${status}`;
+                statusTag.textContent = status.replace('_', ' ').toUpperCase();
+                
+                document.getElementById('view-driver-name').textContent = name;
+            }
+        }
+
+        async function deleteDriver() {
+            if(!confirm("Are you sure?")) return;
+            const response = await fetch(`/delete-driver/${currentDriver.id}/`, { method: 'POST' });
+            if (response.ok) {
+                window.location.reload(); // Deleting requires full refresh or complex DOM removal
+            }
+        }
+
+        async function addCargo() {
+            const nameInput = document.getElementById('new-cargo-name');
+            const name = nameInput.value;
+            if(!name) return;
+            
+            const response = await fetch(`/add-cargo/${currentDriver.id}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                nameInput.value = '';
+                // Update local data
+                currentDriver.cargos.push({ id: data.id, name: data.name });
+                document.getElementById('driver-data-' + currentDriver.id).textContent = JSON.stringify(currentDriver);
+                renderCargos();
+            }
+        }
+
+        async function deleteCargo(id) {
+            const response = await fetch(`/delete-cargo/${id}/`, { method: 'POST' });
+            if (response.ok) {
+                // Update local data
+                currentDriver.cargos = currentDriver.cargos.filter(c => c.id !== id);
+                document.getElementById('driver-data-' + currentDriver.id).textContent = JSON.stringify(currentDriver);
+                renderCargos();
+            }
+        }
+
+        function copyDriverLink() {
+            navigator.clipboard.writeText(currentLink);
+            const box = document.querySelector('.copy-box');
+            box.style.background = '#dcfce7';
+            setTimeout(() => { box.style.background = '#f1f5f9'; }, 500);
+        }
+
+        function closeSidebar() { 
+            document.getElementById('details-panel').style.display = 'none';
+        }
+
+        function filterDrivers() {
+            const query = document.getElementById('driver-search').value.toLowerCase();
+            const items = document.querySelectorAll('.driver-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.driver-name').textContent.toLowerCase();
+                if (name.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        async function addNewDriver() {
+            const name = document.getElementById('new-driver-name').value;
+            if (!name) return;
+            await fetch('/add-driver/', {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            window.location.reload();
+        }
     </script>
 </body>
 </html>

@@ -24,6 +24,17 @@ class LocationConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_add(self.admin_group, self.channel_name)
 
             await self.accept()
+
+            # Update database and notify admins
+            await self.set_driver_online_status(True)
+            await self.channel_layer.group_send(
+                self.admin_group,
+                {
+                    'type': 'connection_status',
+                    'driver_id': self.driver.id,
+                    'is_online': True
+                }
+            )
         else:
             await self.close()
 
@@ -31,6 +42,21 @@ class LocationConsumer(AsyncWebsocketConsumer):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
             await self.channel_layer.group_discard(self.admin_group, self.channel_name)
+
+            # Update database and notify admins
+            if self.driver:
+                await self.set_driver_online_status(False)
+                await self.channel_layer.group_send(
+                    self.admin_group,
+                    {
+                        'type': 'connection_status',
+                        'driver_id': self.driver.id,
+                        'is_online': False
+                    }
+                )
+
+    async def connection_status(self, event):
+        await self.send(text_data=json.dumps(event))
 
     async def receive(self, text_data):
         if not self.driver:
@@ -68,5 +94,9 @@ class LocationConsumer(AsyncWebsocketConsumer):
             return None
 
     @database_sync_to_async
+    def set_driver_online_status(self, online):
+        Driver.objects.filter(id=self.driver.id).update(is_online=online)
+
+    @database_sync_to_async
     def update_driver_location(self, lat, lon):
-        Driver.objects.filter(id=self.driver.id).update(latitude=lat, longitude=lon)
+        Driver.objects.filter(id=self.driver.id).update(latitude=lat, longitude=lon, is_online=True)

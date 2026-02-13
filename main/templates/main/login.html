@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Logistics Tracking</title>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px; }
+        h1 { font-size: 1.5rem; color: #1e293b; margin-bottom: 24px; text-align: center; }
+        form { display: flex; flex-direction: column; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 0.875rem; font-weight: 500; color: #64748b; }
+        input { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; transition: border 0.2s; }
+        input:focus { border-color: #3b82f6; }
+        button { padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        .error { color: #ef4444; font-size: 0.875rem; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>Welcome Back</h1>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                </div>
+            {% endfor %}
+            {% if form.errors %}
+                <p class="error">Invalid username or password.</p>
+            {% endif %}
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>
