@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard - Logistics Tracking</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
+        .info-panel {
+            position: absolute; top: 20px; right: 20px;
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-panel">
+        <h3>Live Drivers Tracking</h3>
+        <ul id="driver-list">
+            {% for driver in drivers %}
+            <li id="driver-status-{{ driver.id }}">
+                {{ driver.name }} - <span class="lat">{{ driver.latitude|default:'N/A' }}</span>, <span class="lon">{{ driver.longitude|default:'N/A' }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([41.2995, 69.2401], 12); // Tashkent Default
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const markers = {};
+
+        // Initial markers
+        {% for driver in drivers %}
+            {% if driver.latitude and driver.longitude %}
+                markers[{{ driver.id }}] = L.marker([{{ driver.latitude }}, {{ driver.longitude }}])
+                    .addTo(map)
+                    .bindPopup("{{ driver.name }}");
+            {% endif %}
+        {% endfor %}
+
+        // WebSocket connection for updates
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/location/admin/');
+
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            if (data.type === 'location_update') {
+                const { driver_id, driver_name, latitude, longitude } = data;
+                
+                // Update or create marker
+                if (markers[driver_id]) {
+                    markers[driver_id].setLatLng([latitude, longitude]);
+                } else {
+                    markers[driver_id] = L.marker([latitude, longitude])
+                        .addTo(map)
+                        .bindPopup(driver_name);
+                }
+
+                // Update info panel
+                const statusEl = document.getElementById(`driver-status-${driver_id}`);
+                if (statusEl) {
+                    statusEl.querySelector('.lat').textContent = latitude.toFixed(4);
+                    statusEl.querySelector('.lon').textContent = longitude.toFixed(4);
+                }
+            }
+        };
+
+        socket.onclose = function(e) {
+            console.error('WebSocket closed unexpectedly');
+        };
+    </script>
+</body>
+</html>
